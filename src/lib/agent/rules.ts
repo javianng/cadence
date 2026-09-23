@@ -77,11 +77,16 @@ export type RuleInput = {
   transitionScore: number;
   previousTransitionScore: number | null;
   pricing: { isIncrease: boolean };
-  /** Set by the verify agent; placeholder until the agent exists. */
-  anomalyDetected?: boolean;
 };
 
-export function evaluateRules(input: RuleInput): EscalationCode[] {
+/**
+ * @param flaggedAnomalyKpiIds KPIs the verify step judged implausible
+ *   (deterministic jump check or Gemini); any entry fires ANOMALY.
+ */
+export function evaluateRules(
+  input: RuleInput,
+  flaggedAnomalyKpiIds: readonly string[],
+): EscalationCode[] {
   const codes: EscalationCode[] = [];
 
   if (
@@ -113,7 +118,7 @@ export function evaluateRules(input: RuleInput): EscalationCode[] {
 
   if (input.pricing.isIncrease) codes.push("STEP_UP");
 
-  if (input.anomalyDetected === true) codes.push("ANOMALY");
+  if (flaggedAnomalyKpiIds.length > 0) codes.push("ANOMALY");
 
   return codes;
 }

@@ -54,6 +54,10 @@ export type PeriodHashReading = {
  * The exact object hashed and anchored on-chain for one loan-period. Built
  * only from fields stored in Firestore (loans.tokenId, readings, scoreHistory)
  * so the verify page can rebuild it and compare with ScoreSubmitted.dataHash.
+ *
+ * Agent runs also commit to `kpiScores` and `decision` (both stored on the
+ * scoreHistory doc); seeded periods omit them, so rebuild with whatever the
+ * scoreHistory doc has.
  */
 export function periodHashPayload(input: {
   loanId: string;
@@ -61,8 +65,16 @@ export function periodHashPayload(input: {
   period: number;
   transitionScore: number;
   readings: PeriodHashReading[];
+  kpiScores?: { id: string; score: number }[];
+  decision?: string;
 }) {
   return {
+    ...(input.kpiScores && {
+      kpiScores: [...input.kpiScores]
+        .sort((a, b) => a.id.localeCompare(b.id))
+        .map((k) => ({ id: k.id, score: k.score })),
+    }),
+    ...(input.decision !== undefined && { decision: input.decision }),
     loanId: input.loanId,
     tokenId: input.tokenId,
     period: input.period,

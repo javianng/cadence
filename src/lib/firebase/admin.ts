@@ -17,4 +17,12 @@ const adminApp = getApps().length
     });
 
 export const adminDb = getFirestore(adminApp);
+// Optional fields (e.g. a recommendation only on escalations) may be undefined.
+if (
+  !(globalThis as { __cadenceDbConfigured?: boolean }).__cadenceDbConfigured
+) {
+  adminDb.settings({ ignoreUndefinedProperties: true });
+  (globalThis as { __cadenceDbConfigured?: boolean }).__cadenceDbConfigured =
+    true;
+}
 export const adminAuth = getAuth(adminApp);

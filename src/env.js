@@ -18,6 +18,9 @@ export const env = createEnv({
     DEPLOYER_PRIVATE_KEY: z.string().regex(/^(0x)?[0-9a-fA-F]{64}$/),
     AMOY_RPC_URL: z.string().url(),
     CADENCE_CONTRACT_ADDRESS: z.string().regex(/^0x[0-9a-fA-F]{40}$/),
+    // Google Gen AI (agent reasoning steps)
+    GEMINI_API_KEY: z.string(),
+    GEMINI_MODEL: z.string().optional(),
   },
 
   /**
@@ -47,6 +50,8 @@ export const env = createEnv({
     DEPLOYER_PRIVATE_KEY: process.env.DEPLOYER_PRIVATE_KEY,
     AMOY_RPC_URL: process.env.AMOY_RPC_URL,
     CADENCE_CONTRACT_ADDRESS: process.env.CADENCE_CONTRACT_ADDRESS,
+    GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+    GEMINI_MODEL: process.env.GEMINI_MODEL,
     NEXT_PUBLIC_FIREBASE_API_KEY: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
     NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
     NEXT_PUBLIC_FIREBASE_PROJECT_ID: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,

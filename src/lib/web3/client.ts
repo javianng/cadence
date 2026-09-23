@@ -1,6 +1,12 @@
 import "server-only";
 
-import { JsonRpcProvider, Wallet, parseUnits } from "ethers";
+import {
+  JsonRpcProvider,
+  Wallet,
+  formatEther,
+  parseEther,
+  parseUnits,
+} from "ethers";
 import { env } from "~/env";
 
 export const AMOY_CHAIN_ID = 80002;
@@ -24,3 +30,22 @@ export const FEE_OVERRIDES = {
   maxPriorityFeePerGas: parseUnits("30", "gwei"),
   maxFeePerGas: parseUnits("35", "gwei"),
 } as const;
+
+/** Never let a transaction take the wallet below this (same as the seed). */
+export const MIN_BALANCE_POL = "0.005";
+
+/**
+ * Throws a readable error if sending `gas` at the capped fee could leave the
+ * wallet under MIN_BALANCE_POL. Returns the balance for logging.
+ */
+export async function assertGasBudget(label: string, gas: bigint) {
+  const balance = await provider.getBalance(wallet.address);
+  const cost = gas * FEE_OVERRIDES.maxFeePerGas;
+  if (balance - cost < parseEther(MIN_BALANCE_POL)) {
+    throw new Error(
+      `Insufficient gas for ${label}: wallet ${wallet.address} has ${formatEther(balance)} POL, ` +
+        `this needs up to ${formatEther(cost)} POL and must leave ${MIN_BALANCE_POL} POL. Top up from the Amoy faucet.`,
+    );
+  }
+  return balance;
+}

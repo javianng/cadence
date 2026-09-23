@@ -62,4 +62,27 @@ describe("periodHashPayload", () => {
       computeDataHash(periodHashPayload({ ...common, readings: [r2, r1] })),
     );
   });
+
+  it("commits to kpiScores and decision only when given (agent runs)", () => {
+    const common = {
+      loanId: "l",
+      tokenId: 0,
+      period: 21,
+      transitionScore: 70,
+      readings: [],
+    };
+    const seeded = periodHashPayload(common);
+    expect(seeded).not.toHaveProperty("decision");
+    expect(seeded).not.toHaveProperty("kpiScores");
+    const withDecision = (decision: string) =>
+      computeDataHash(
+        periodHashPayload({
+          ...common,
+          kpiScores: [{ id: "a", score: 70 }],
+          decision,
+        }),
+      );
+    expect(withDecision("no_change")).not.toBe(withDecision("escalate"));
+    expect(withDecision("no_change")).not.toBe(computeDataHash(seeded));
+  });
 });

@@ -21,57 +21,54 @@ function clean(): RuleInput {
 
 describe("evaluateRules", () => {
   it("fires nothing on clean data", () => {
-    expect(evaluateRules(clean())).toEqual([]);
+    expect(evaluateRules(clean(), [])).toEqual([]);
   });
 
   it("DATA_MISMATCH above 5% divergence, not at exactly 5%", () => {
     const input = clean();
     input.kpis[0]!.primaryValue = 105; // exactly 5% vs 100
     input.kpis[0]!.secondaryValue = 100;
-    expect(evaluateRules(input)).toEqual([]);
+    expect(evaluateRules(input, [])).toEqual([]);
     input.kpis[0]!.primaryValue = 106;
-    expect(evaluateRules(input)).toEqual(["DATA_MISMATCH"]);
+    expect(evaluateRules(input, [])).toEqual(["DATA_MISMATCH"]);
   });
 
   it("KPI_BREACH below 40, not at exactly 40", () => {
     const input = clean();
     input.kpis[1]!.score = 40;
-    expect(evaluateRules(input)).toEqual([]);
+    expect(evaluateRules(input, [])).toEqual([]);
     input.kpis[1]!.score = 39;
-    expect(evaluateRules(input)).toEqual(["KPI_BREACH"]);
+    expect(evaluateRules(input, [])).toEqual(["KPI_BREACH"]);
   });
 
   it("SHARP_DECLINE on a drop of 10+ points, not 9, not with no history", () => {
     const input = clean();
     input.previousTransitionScore = 79;
-    expect(evaluateRules(input)).toEqual([]);
+    expect(evaluateRules(input, [])).toEqual([]);
     input.previousTransitionScore = 80;
-    expect(evaluateRules(input)).toEqual(["SHARP_DECLINE"]);
+    expect(evaluateRules(input, [])).toEqual(["SHARP_DECLINE"]);
     input.previousTransitionScore = null;
-    expect(evaluateRules(input)).toEqual([]);
+    expect(evaluateRules(input, [])).toEqual([]);
   });
 
   it("DATA_GAP when either source is missing", () => {
     const input = clean();
     input.kpis[0]!.secondaryValue = null;
-    expect(evaluateRules(input)).toEqual(["DATA_GAP"]);
+    expect(evaluateRules(input, [])).toEqual(["DATA_GAP"]);
     const input2 = clean();
     input2.kpis[1]!.primaryValue = null;
-    expect(evaluateRules(input2)).toEqual(["DATA_GAP"]);
+    expect(evaluateRules(input2, [])).toEqual(["DATA_GAP"]);
   });
 
   it("STEP_UP when pricing is an increase", () => {
     const input = clean();
     input.pricing.isIncrease = true;
-    expect(evaluateRules(input)).toEqual(["STEP_UP"]);
+    expect(evaluateRules(input, [])).toEqual(["STEP_UP"]);
   });
 
-  it("ANOMALY only when the verify agent flags it", () => {
-    const input = clean();
-    input.anomalyDetected = false;
-    expect(evaluateRules(input)).toEqual([]);
-    input.anomalyDetected = true;
-    expect(evaluateRules(input)).toEqual(["ANOMALY"]);
+  it("ANOMALY when verify flags any KPI", () => {
+    expect(evaluateRules(clean(), [])).toEqual([]);
+    expect(evaluateRules(clean(), ["a"])).toEqual(["ANOMALY"]);
   });
 
   it("fires several rules together", () => {
@@ -83,9 +80,8 @@ describe("evaluateRules", () => {
       transitionScore: 45,
       previousTransitionScore: 62,
       pricing: { isIncrease: true },
-      anomalyDetected: true,
     };
-    expect(evaluateRules(input)).toEqual([
+    expect(evaluateRules(input, ["b"])).toEqual([
       "DATA_MISMATCH",
       "KPI_BREACH",
       "SHARP_DECLINE",

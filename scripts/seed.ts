@@ -174,17 +174,20 @@ function planLoan(loan: DemoLoan): PeriodPlan[] {
       },
       findBand(score, loan.bands),
     );
-    let escalations = evaluateRules({
-      kpis: readings.map((r) => ({
-        kpiId: r.kpiId,
-        primaryValue: r.primaryValue,
-        secondaryValue: r.secondaryValue,
-        score: r.score,
-      })),
-      transitionScore: score,
-      previousTransitionScore: previousScore,
-      pricing: { isIncrease: preview.isIncrease },
-    });
+    let escalations = evaluateRules(
+      {
+        kpis: readings.map((r) => ({
+          kpiId: r.kpiId,
+          primaryValue: r.primaryValue,
+          secondaryValue: r.secondaryValue,
+          score: r.score,
+        })),
+        transitionScore: score,
+        previousTransitionScore: previousScore,
+        pricing: { isIncrease: preview.isIncrease },
+      },
+      [],
+    );
     const held = holdsPricing(escalations);
     if (held) escalations = escalations.filter((c) => c !== "STEP_UP");
     const isIncrease = !held && preview.isIncrease;
@@ -804,6 +807,7 @@ async function main() {
           loanId: loan.id,
           borrowerName: loan.borrower.name,
           ...e,
+          visibility: "all",
           txHash: e.txHash ?? null,
           createdAt: ts(periodEnd(e.period)),
         },

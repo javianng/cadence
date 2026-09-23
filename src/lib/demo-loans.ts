@@ -15,6 +15,8 @@ export type KpiDefinition = {
   finalTarget: number;
   targetPeriod: number;
   weight: number;
+  /** Primary/secondary divergence tolerance (fraction). Defaults to RULE_THRESHOLDS.mismatchPct. */
+  tolerancePct?: number;
   primarySource: string;
   secondarySource: string;
 };
