@@ -7,7 +7,17 @@ export const env = createEnv({
    * isn't built with invalid env vars.
    */
   server: {
-    NODE_ENV: z.enum(["development", "test", "production"]),
+    NODE_ENV: z
+      .enum(["development", "test", "production"])
+      .default("development"),
+    // Firebase Admin (service account) — server-side Firestore writes
+    FIREBASE_PROJECT_ID: z.string(),
+    FIREBASE_CLIENT_EMAIL: z.string().email(),
+    FIREBASE_PRIVATE_KEY: z.string(),
+    // Polygon Amoy
+    DEPLOYER_PRIVATE_KEY: z.string().regex(/^(0x)?[0-9a-fA-F]{64}$/),
+    AMOY_RPC_URL: z.string().url(),
+    CADENCE_CONTRACT_ADDRESS: z.string().regex(/^0x[0-9a-fA-F]{40}$/),
   },
 
   /**
@@ -31,6 +41,12 @@ export const env = createEnv({
    */
   runtimeEnv: {
     NODE_ENV: process.env.NODE_ENV,
+    FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID,
+    FIREBASE_CLIENT_EMAIL: process.env.FIREBASE_CLIENT_EMAIL,
+    FIREBASE_PRIVATE_KEY: process.env.FIREBASE_PRIVATE_KEY,
+    DEPLOYER_PRIVATE_KEY: process.env.DEPLOYER_PRIVATE_KEY,
+    AMOY_RPC_URL: process.env.AMOY_RPC_URL,
+    CADENCE_CONTRACT_ADDRESS: process.env.CADENCE_CONTRACT_ADDRESS,
     NEXT_PUBLIC_FIREBASE_API_KEY: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
     NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
     NEXT_PUBLIC_FIREBASE_PROJECT_ID: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,

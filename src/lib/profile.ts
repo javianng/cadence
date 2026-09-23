@@ -1,6 +1,6 @@
 import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import { z } from "zod";
-import { db } from "~/lib/firebase";
+import { db } from "~/lib/firebase/client";
 import { ROLE_META, ROLES } from "~/lib/roles";
 
 export { ROLE_META, ROLES, type Role } from "~/lib/roles";

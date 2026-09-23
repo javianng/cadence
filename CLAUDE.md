@@ -15,9 +15,9 @@ The repository was scaffolded using `create-t3-app`, but the generic `README.md`
 
 - **Styling & UI:** Tailwind CSS v4 and shadcn/ui.
 
-- **Database Backend:** Firebase is installed but is not yet wired up, lacking a configuration file within the `src` directory.
+- **Database Backend:** Firebase — client SDK in `src/lib/firebase/client.ts`, Admin SDK in `src/lib/firebase/admin.ts` (server-only).
 
-- **Testing:** There is no test runner currently configured.
+- **Testing:** Vitest (`npm test`) for pure logic in `src/lib/**/*.test.ts`; Hardhat tests in `contracts/`.
 
 **Available Commands**
 
@@ -90,6 +90,34 @@ The AI agent runs per loan per simulated period (one week). It processes through
 - **Firestore:** Houses collections for `personas`, `borrowers`, `loans`, `kpis`, `readings`, `scoreHistory`, `agentRuns`, `events`, `exceptions`, and `simulation/state`.
 - **CadenceLoan.sol:** Inherits OpenZeppelin ERC721 and AccessControl. The tokens are soulbound (non-transferable). Functions include `mintLoan`, `submitScore`, `flagException`, `resolveAdjustment`, and `previewMargin`.
 - **Tamper Evidence:** Firestore data is converted into a canonical JSON string and hashed (`keccak256`). This hash is verified against on-chain records to prove off-chain data integrity. The NFT URI dynamically renders an SVG based on score status.
+
+## Demo Data, Rules & Seed
+
+Source of truth in code: `src/lib/demo-loans.ts` (loans/KPIs), `src/lib/agent/rules.ts` (thresholds), `src/lib/pricing.ts` (mirror of the contract), `scripts/seed.ts` (schema writes). Keep this summary in sync.
+
+**Accounts (Firebase Auth, already signed up):** borrower `j4vianz01@gmail.com` owns all three loans (`loans.ownerUid`); RM `rm@gmail.com` is RM on all three (`loans.rmUid`); risk `risk@gmail.com` sees the whole book. `personas/{borrower|rm|risk}` maps each role to its uid.
+
+**Loans** (fictional, SGD, 20 weekly periods from 2026-05-04, glide target at period 52, max step 25bps, bands `[≥80: −50, ≥60: −25, ≥40: 0, ≥0: +50]` vs base):
+- `straits-build` — Straits Build Pte Ltd, construction SG, SGD 150m, **improving**, base/floor/cap 250/175/325. KPIs: Scope 1+2 intensity (↓42→30, w.5), low-carbon concrete % (↑18→40, w.3), waste recycled % (↑55→75, w.2).
+- `meridian-aviation` — Meridian Aviation Services, aviation MRO SG, SGD 220m, **drifting**, 275/200/350. KPIs: SAF blend % (↑2→8, w.4), fuel intensity L/100RTK (↓32→28.8, w.4), electrified GSE % (↑30→60, w.2). Sharp drop at period 12, ends with a +25bps step-up pending RM approval.
+- `lumen-semiconductors` — Lumen Semiconductors Sdn Bhd, semiconductors MY, SGD 180m, **mismatch**, 225/150/300. KPIs: renewable electricity % (↑35→60, w.5), water intensity m³/wafer (↓8→6.5, w.3), PFC emissions tCO2e (↓12000→9000, w.2). Secondary source diverges 8–12% from period 10; pricing held.
+
+**Scoring:** KPI score = clamp(round(70 × achieved/expected improvement), 0, 100) — on glide path = 70. Transition score = weighted average (weights normalized), integer.
+
+**Reconciliation:** accepted value = primary if |primary − secondary|/|secondary| ≤ 5%, else the value worse for the borrower.
+
+**Escalation rules:** `DATA_MISMATCH` divergence > 5% · `KPI_BREACH` any KPI score < 40 · `SHARP_DECLINE` transition score drops ≥ 10 vs previous period · `DATA_GAP` a source is missing · `STEP_UP` pricing would increase · `ANOMALY` set by the verify agent. **Data-integrity codes (`DATA_MISMATCH`, `DATA_GAP`, `ANOMALY`) hold pricing:** no `submitScore`; the data hash is anchored via `flagException` and the RM decides.
+
+**Firestore schema** (doc IDs are deterministic slugs; `pNN` = zero-padded period):
+- `loans/{loanId}` — terms (`baseMarginBps`, `floorBps`, `capBps`, `maxStepBps`, `bands`, `staticMarginBps`), `ownerUid`, `rmUid`, `scenario`, `tokenId`, `mintTxHash`, `contractAddress`, `chainId`; live state `currentMarginBps`/`pendingAdjustmentBps` (read from the contract), `currentScore`, `currentPeriod`, `status` (`on_track`|`watch`|`exception`).
+- `borrowers/{id}` (`borrowerRef` = keccak256 of `cadence:borrower:{id}`), `kpis/{loanId}__{kpiId}`, `readings/{loanId}__{kpiId}__pNN` (primary, secondary, accepted, divergencePct, glideValue, score).
+- `scoreHistory/{loanId}__pNN` — transitionScore, kpiScores, marginBefore/AfterBps, staticMarginBps, isIncrease, pricingHeld, pendingAdjustmentBps, escalations, `dataHash`, `onChain`, `txHash`, `blockNumber`, `resolveTxHash`, `flagTxHashes`.
+- `exceptions/{loanId}__pNN` (codes, status `open`|`resolved`, assignedRmUid), `events/{loanId}__pNN__{type}` (loan_minted, margin_decreased, adjustment_pending, adjustment_approved, exception_opened, pricing_held, score_anchored), `simulation/state`. `agentRuns` is written by the agent.
+- `dataHash` = `computeDataHash(periodHashPayload({loanId, tokenId, period, transitionScore, readings}))` from `src/lib/web3/hash.ts` — the verify page rebuilds it from Firestore and compares with `ScoreSubmitted`/`ExceptionFlagged`.
+
+**On-chain vs Firestore-only:** history periods go on-chain only when the margin moved (submitScore, plus RM-approved `resolveAdjustment` for step-ups), so the contract's margin always equals the Firestore history; the last `--chain-periods` (default 2) always go on-chain, with step-ups left pending. Quiet periods are `onChain: false`.
+
+**Commands:** `npm test` (vitest, `src/**/*.test.ts`) · `npm run seed` (idempotent, resumes) · `npm run seed -- --dry-run` (print plan, no credentials needed) · `npm run seed -- --reset` (wipe demo collections, re-mint new tokens) · `--chain-periods=N`. On-chain writes use `FEE_OVERRIDES` (30 gwei tip, 35 gwei max) and stop before the wallet drops below 0.005 POL.
 
 ## Workflows, Pages & Guidelines
 

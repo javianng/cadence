@@ -8,7 +8,7 @@ import {
   useEffect,
   useState,
 } from "react";
-import { auth } from "~/lib/firebase";
+import { auth } from "~/lib/firebase/client";
 import { getProfile, type UserProfile } from "~/lib/profile";
 
 type AuthState = {

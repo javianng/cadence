@@ -26,7 +26,7 @@ import {
   FieldSeparator,
 } from "~/components/ui/field";
 import { Input } from "~/components/ui/input";
-import { auth, googleProvider } from "~/lib/firebase";
+import { auth, googleProvider } from "~/lib/firebase/client";
 
 type Mode = "login" | "signup";
 

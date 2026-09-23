@@ -13,6 +13,16 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // Demo data: publicly readable (dashboards + public /verify page), written
+    // only by firebase-admin from API routes and scripts.
+    match /{collection}/{docId} {
+      allow read: if collection in [
+        'personas', 'borrowers', 'loans', 'kpis', 'readings', 'scoreHistory',
+        'agentRuns', 'events', 'exceptions', 'simulation'
+      ];
+      allow write: if false;
+    }
+
     // Everything else is denied until its rules are written.
     match /{document=**} {
       allow read, write: if false;
