@@ -391,6 +391,9 @@ async function main() {
     tokenId: number | null;
     mintTxHash: string | null;
     anchored: Map<number, FirebaseFirestore.DocumentData>;
+    /** Agent runs have moved this loan past the seeded history. */
+    agentOwned: boolean;
+    agentPeriod: number;
   };
   const work: LoanWork[] = [];
   for (const loan of DEMO_LOANS) {
@@ -410,9 +413,15 @@ async function main() {
       plans: planLoan(loan),
       tokenId: minted ? (doc.tokenId as number) : null,
       mintTxHash: minted ? (doc.mintTxHash as string) : null,
+      agentOwned: minted && Number(doc.currentPeriod ?? 0) > SEED_PERIODS,
+      agentPeriod: minted ? Number(doc.currentPeriod ?? 0) : 0,
       anchored: new Map(
         (history?.docs ?? [])
-          .filter((d) => d.get("onChain") === true)
+          .filter(
+            (d) =>
+              d.get("onChain") === true &&
+              (d.get("period") as number) <= SEED_PERIODS,
+          )
           .map((d) => [d.get("period") as number, d.data()]),
       ),
     });
@@ -449,9 +458,11 @@ async function main() {
   const summary: Record<string, string | number>[] = [];
   const rmRef = keccakId(`cadence:rm:${personas.rm.uid}`);
 
-  for (const { loan, plans, anchored, ...w } of work) {
+  for (const { loan, plans, anchored, agentOwned, ...w } of work) {
     console.log(`\n▶ ${loan.borrower.name} (${loan.scenario})`);
     const loanRef = adminDb.doc(`loans/${loan.id}`);
+    // Denormalized onto every loan-scoped doc so firestore.rules can scope reads.
+    const scope = { ownerUid: personas.borrower.uid, rmUid: personas.rm.uid };
     const borrowerRef = keccakId(`cadence:borrower:${loan.borrower.id}`);
 
     // 1. Borrower, loan terms, KPIs
@@ -491,7 +502,7 @@ async function main() {
       const { id: kpiId, ...rest } = kpi;
       await adminDb
         .doc(`kpis/${kpiDocId(loan.id, kpiId)}`)
-        .set({ loanId: loan.id, kpiId, ...rest });
+        .set({ loanId: loan.id, ...scope, kpiId, ...rest });
     }
 
     // 2. Mint
@@ -528,9 +539,14 @@ async function main() {
     }
     const token = BigInt(tokenId);
 
-    // Resume safety: chain must match the last period we recorded.
+    // Resume safety: chain must match the last period we recorded. Once the
+    // agent has taken over (period > SEED_PERIODS) the chain has moved on.
     const lastAnchored = Math.max(0, ...anchored.keys());
-    {
+    if (agentOwned) {
+      console.log(
+        `    agent-owned (period ${w.agentPeriod}): history refreshed, live state and decided exceptions left alone`,
+      );
+    } else {
       const expected = lastAnchored
         ? plans[lastAnchored - 1]!
         : { marginAfterBps: loan.baseMarginBps, pendingAdjustmentBps: 0 };
@@ -565,6 +581,17 @@ async function main() {
         txHash: mintTxHash,
       },
     ];
+    // Never reopen an exception the RM has already decided.
+    const decidedExceptions = new Set(
+      (
+        await adminDb
+          .collection("exceptions")
+          .where("loanId", "==", loan.id)
+          .get()
+      ).docs
+        .filter((d) => d.get("status") !== "open")
+        .map((d) => d.id),
+    );
     let previousCodes = new Set<EscalationCode>();
     let wasHeld = false;
     let openExceptions = 0;
@@ -586,6 +613,7 @@ async function main() {
       );
       const historyDoc = {
         loanId: loan.id,
+        ...scope,
         tokenId,
         period: p.period,
         periodEnd: end,
@@ -696,12 +724,15 @@ async function main() {
           adminDb.doc(
             `readings/${kpiDocId(loan.id, r.kpiId)}__p${pad(p.period)}`,
           ),
-          { loanId: loan.id, period: p.period, periodEnd: end, ...r },
+          { loanId: loan.id, ...scope, period: p.period, periodEnd: end, ...r },
         );
       }
 
       // Exceptions: recent periods stay open for the RM; history is resolved.
-      if (p.escalations.length > 0) {
+      if (
+        p.escalations.length > 0 &&
+        !decidedExceptions.has(periodDocId(loan.id, p.period))
+      ) {
         const open = p.recent;
         if (open) openExceptions++;
         const resolution = p.held
@@ -711,6 +742,7 @@ async function main() {
             : "Reviewed and acknowledged by RM.";
         batch.set(adminDb.doc(`exceptions/${periodDocId(loan.id, p.period)}`), {
           loanId: loan.id,
+          ...scope,
           borrowerName: loan.borrower.name,
           period: p.period,
           codes: p.escalations,
@@ -805,6 +837,7 @@ async function main() {
         adminDb.doc(`events/${periodDocId(loan.id, e.period)}__${e.type}`),
         {
           loanId: loan.id,
+          ...scope,
           borrowerName: loan.borrower.name,
           ...e,
           visibility: "all",
@@ -820,7 +853,7 @@ async function main() {
     const latest = plans[plans.length - 1]!;
     const status =
       openExceptions > 0
-        ? "exception"
+        ? "under_review"
         : latest.transitionScore < 60
           ? "watch"
           : "on_track";
@@ -828,10 +861,15 @@ async function main() {
       {
         currentMarginBps: Number(onChain.currentMarginBps),
         pendingAdjustmentBps: Number(onChain.pendingAdjustmentBps),
-        currentScore: latest.transitionScore,
         chainScore: Number(onChain.currentScore),
-        currentPeriod: SEED_PERIODS,
-        status,
+        // Agent runs own score/period/status once past the seeded history.
+        ...(agentOwned
+          ? {}
+          : {
+              currentScore: latest.transitionScore,
+              currentPeriod: SEED_PERIODS,
+              status,
+            }),
         updatedAt: FieldValue.serverTimestamp(),
       },
       { merge: true },
@@ -847,8 +885,41 @@ async function main() {
     });
   }
 
+  // Backfill ownerUid/rmUid onto docs the agent or API wrote (firestore.rules
+  // scopes reads by them).
+  let backfilled = 0;
+  for (const loan of DEMO_LOANS) {
+    const scope = { ownerUid: personas.borrower.uid, rmUid: personas.rm.uid };
+    for (const name of [
+      "kpis",
+      "readings",
+      "scoreHistory",
+      "events",
+      "exceptions",
+      "agentRuns",
+      "messages",
+    ]) {
+      const snap = await adminDb
+        .collection(name)
+        .where("loanId", "==", loan.id)
+        .get();
+      const stale = snap.docs.filter(
+        (d) =>
+          d.get("ownerUid") !== scope.ownerUid ||
+          d.get("rmUid") !== scope.rmUid,
+      );
+      for (let i = 0; i < stale.length; i += 400) {
+        const b = adminDb.batch();
+        for (const d of stale.slice(i, i + 400)) b.update(d.ref, scope);
+        await b.commit();
+      }
+      backfilled += stale.length;
+    }
+  }
+  console.log(`Backfilled ownerUid/rmUid on ${backfilled} doc(s).`);
+
   await adminDb.doc("simulation/state").set({
-    currentPeriod: SEED_PERIODS,
+    currentPeriod: Math.max(SEED_PERIODS, ...work.map((w) => w.agentPeriod)),
     scenarios: Object.fromEntries(DEMO_LOANS.map((l) => [l.id, l.scenario])),
     chainPeriods: CHAIN_PERIODS,
     updatedAt: FieldValue.serverTimestamp(),
