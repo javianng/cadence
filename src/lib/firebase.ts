@@ -1,5 +1,7 @@
 import { getApp, getApps, initializeApp, type FirebaseApp } from "firebase/app";
 import { getAnalytics, isSupported, type Analytics } from "firebase/analytics";
+import { GoogleAuthProvider, getAuth } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
 import { env } from "~/env";
 
 const firebaseConfig = {
@@ -15,6 +17,10 @@ const firebaseConfig = {
 export const app: FirebaseApp = getApps().length
   ? getApp()
   : initializeApp(firebaseConfig);
+
+export const auth = getAuth(app);
+export const db = getFirestore(app);
+export const googleProvider = new GoogleAuthProvider();
 
 let analyticsPromise: Promise<Analytics | null> | undefined;
 
