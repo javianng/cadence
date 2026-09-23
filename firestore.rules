@@ -1,0 +1,21 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // User profiles are written by the client during onboarding (the one
+    // exception to server-only Firestore writes). Role is locked once set.
+    match /users/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow create: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.role in ['borrower', 'rm', 'risk'];
+      allow update: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.role == resource.data.role;
+      allow delete: if false;
+    }
+
+    // Everything else is denied until its rules are written.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
