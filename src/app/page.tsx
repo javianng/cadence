@@ -1,3 +1,4 @@
+import { type Metadata } from "next";
 import {
   BotIcon,
   Building2Icon,
@@ -38,6 +39,7 @@ import { Skeleton } from "~/components/ui/skeleton";
 import { env } from "~/env";
 import { getLandingStats, getMarginHistory } from "~/lib/server/landing";
 import type { Role } from "~/lib/roles";
+import { siteConfig } from "~/lib/site";
 
 // Stats and the chart are read live from Firestore on every request.
 export const dynamic = "force-dynamic";
@@ -329,28 +331,28 @@ function Architecture() {
     body: string;
     link?: React.ReactNode;
   }[] = [
-      {
-        icon: BotIcon,
-        title: "Agent",
-        body: "Gemini verifies incoming data, reconciles conflicting sources, and explains every score change in plain language.",
-        link: <AgentTraceLink className="text-sm" />,
-      },
-      {
-        icon: FileCode2Icon,
-        title: "Contract",
-        body: "A Solidity contract on Polygon Amoy turns each score into a margin, using a pricing grid locked in at origination.",
-        link: (
-          <ExternalTextLink href={`${CONTRACT_URL}#code`} className="text-sm">
-            Read the verified source ↗
-          </ExternalTextLink>
-        ),
-      },
-      {
-        icon: DatabaseIcon,
-        title: "Ledger",
-        body: "Every stakeholder — borrower, relationship manager, risk — sees the same data, filtered to what they're allowed to see.",
-      },
-    ];
+    {
+      icon: BotIcon,
+      title: "Agent",
+      body: "Gemini verifies incoming data, reconciles conflicting sources, and explains every score change in plain language.",
+      link: <AgentTraceLink className="text-sm" />,
+    },
+    {
+      icon: FileCode2Icon,
+      title: "Contract",
+      body: "A Solidity contract on Polygon Amoy turns each score into a margin, using a pricing grid locked in at origination.",
+      link: (
+        <ExternalTextLink href={`${CONTRACT_URL}#code`} className="text-sm">
+          Read the verified source ↗
+        </ExternalTextLink>
+      ),
+    },
+    {
+      icon: DatabaseIcon,
+      title: "Ledger",
+      body: "Every stakeholder — borrower, relationship manager, risk — sees the same data, filtered to what they're allowed to see.",
+    },
+  ];
   return (
     <Section>
       <div className="flex flex-col gap-12">
@@ -387,25 +389,25 @@ const PERSONAS: {
   body: string;
   role: Role;
 }[] = [
-    {
-      icon: Building2Icon,
-      title: "Borrower",
-      body: "See your transition score, your margin, and why it moved.",
-      role: "borrower",
-    },
-    {
-      icon: UsersIcon,
-      title: "Relationship manager",
-      body: "Review flagged exceptions and approve or hold rate changes.",
-      role: "rm",
-    },
-    {
-      icon: ShieldIcon,
-      title: "Risk",
-      body: "Monitor the whole portfolio and audit the agent's decisions.",
-      role: "risk",
-    },
-  ];
+  {
+    icon: Building2Icon,
+    title: "Borrower",
+    body: "See your transition score, your margin, and why it moved.",
+    role: "borrower",
+  },
+  {
+    icon: UsersIcon,
+    title: "Relationship manager",
+    body: "Review flagged exceptions and approve or hold rate changes.",
+    role: "rm",
+  },
+  {
+    icon: ShieldIcon,
+    title: "Risk",
+    body: "Monitor the whole portfolio and audit the agent's decisions.",
+    role: "risk",
+  },
+];
 
 function EntryPoints() {
   const cardClass =
@@ -494,9 +496,27 @@ function Footer() {
   );
 }
 
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+};
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  name: siteConfig.name,
+  description: siteConfig.description,
+  url: siteConfig.url,
+  applicationCategory: "FinanceApplication",
+  operatingSystem: "Web",
+};
+
 export default function LandingPage() {
   return (
     <div className="dark landing min-h-svh">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <header className="absolute inset-x-0 top-0 z-10">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-5">
           <span className="flex items-center gap-2 text-base font-semibold">

@@ -1,10 +1,11 @@
 import "~/styles/globals.css";
 
-import { type Metadata } from "next";
+import { type Metadata, type Viewport } from "next";
 import localFont from "next/font/local";
 import { AuthProvider } from "~/components/auth/auth-provider";
 import { ThemeProvider } from "~/components/theme-provider";
 import { TooltipProvider } from "~/components/ui/tooltip";
+import { siteConfig } from "~/lib/site";
 import { cn } from "~/lib/utils";
 
 /**
@@ -46,8 +47,32 @@ const lader = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Cadence",
-  description: "Continuous pricing for sustainability-linked loans",
+  metadataBase: new URL(siteConfig.url),
+  title: {
+    default: `${siteConfig.name}: ${siteConfig.tagline}`,
+    template: `%s · ${siteConfig.name}`,
+  },
+  description: siteConfig.description,
+  applicationName: siteConfig.name,
+  keywords: [...siteConfig.keywords],
+  authors: [{ name: "Cadence team, Bank of Singapore" }],
+  creator: "Cadence team, Bank of Singapore",
+  category: "finance",
+  openGraph: {
+    type: "website",
+    locale: "en_SG",
+    url: "/",
+    siteName: siteConfig.name,
+    title: `${siteConfig.name}: ${siteConfig.tagline}`,
+    description: siteConfig.description,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: `${siteConfig.name}: ${siteConfig.tagline}`,
+    description: siteConfig.description,
+  },
+  robots: { index: true, follow: true },
+  formatDetection: { telephone: false, email: false, address: false },
   icons: {
     icon: [
       { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },
@@ -55,6 +80,14 @@ export const metadata: Metadata = {
     ],
     apple: { url: "/apple-touch-icon.png", sizes: "180x180" },
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#0a0a0b" },
+  ],
+  colorScheme: "light dark",
 };
 
 export default function RootLayout({

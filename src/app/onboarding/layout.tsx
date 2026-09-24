@@ -1,11 +1,10 @@
 import { type Metadata } from "next";
-import { AppShell } from "~/components/app-shell";
 
 export const metadata: Metadata = {
-  title: { default: "Risk", template: "%s · Risk · Cadence" },
+  title: "Get started",
   robots: { index: false, follow: false },
 };
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  return <AppShell roles={["risk"]}>{children}</AppShell>;
+  return children;
 }
