@@ -37,7 +37,7 @@ export type DemoLoan = {
 
 /** Demo accounts (Firebase Auth users) that play each persona. */
 export const DEMO_ACCOUNTS = {
-  borrower: "j4vianz01@gmail.com",
+  borrower: "client@gmail.com",
   rm: "rm@gmail.com",
   risk: "risk@gmail.com",
 } as const;
