@@ -3,6 +3,7 @@ import "~/styles/globals.css";
 import { type Metadata } from "next";
 import localFont from "next/font/local";
 import { AuthProvider } from "~/components/auth/auth-provider";
+import { ThemeProvider } from "~/components/theme-provider";
 import { TooltipProvider } from "~/components/ui/tooltip";
 import { cn } from "~/lib/utils";
 
@@ -60,11 +61,18 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={cn(lader.variable, "font-sans")}>
+    // next-themes sets the class on <html> before hydration.
+    <html
+      lang="en"
+      className={cn(lader.variable, "font-sans")}
+      suppressHydrationWarning
+    >
       <body>
-        <AuthProvider>
-          <TooltipProvider>{children}</TooltipProvider>
-        </AuthProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <TooltipProvider>{children}</TooltipProvider>
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

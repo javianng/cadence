@@ -19,6 +19,7 @@ import { useState } from "react";
 import { useAuth } from "~/components/auth/auth-provider";
 import { RequireAuth } from "~/components/auth/require-auth";
 import { CadenceLogo } from "~/components/cadence-mark";
+import { ModeToggle } from "~/components/mode-toggle";
 import { ProfileDialog, UserAvatar } from "~/components/profile-dialog";
 import { Badge } from "~/components/ui/badge";
 import {
@@ -277,11 +278,12 @@ function InsetHeader() {
       <SidebarTrigger className="-ml-1" />
       <Separator orientation="vertical" className="mr-2 data-vertical:h-4" />
       <span className="text-sm font-medium">{active?.label ?? "Cadence"}</span>
-      {profile ? (
-        <Badge variant="secondary" className="ml-auto">
-          {ROLE_META[profile.role].label}
-        </Badge>
-      ) : null}
+      <div className="ml-auto flex items-center gap-2">
+        {profile ? (
+          <Badge variant="secondary">{ROLE_META[profile.role].label}</Badge>
+        ) : null}
+        <ModeToggle />
+      </div>
     </header>
   );
 }

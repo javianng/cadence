@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "~/components/auth/auth-provider";
 import { FullPageSpinner, RequireAuth } from "~/components/auth/require-auth";
 import { CadenceMark } from "~/components/cadence-mark";
+import { ModeToggle } from "~/components/mode-toggle";
 import { Alert, AlertDescription } from "~/components/ui/alert";
 import { Button } from "~/components/ui/button";
 import {
@@ -128,7 +129,10 @@ function Onboarding() {
   );
 
   return (
-    <main className="bg-muted flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
+    <main className="bg-muted relative flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
+      <div className="absolute top-4 right-4">
+        <ModeToggle />
+      </div>
       <div className="flex w-full max-w-lg flex-col gap-6">
         <div className="self-center">
           <CadenceMark />

@@ -7,7 +7,8 @@
 @theme inline {
   /* Lader everywhere (loaded in src/app/layout.tsx), system sans-serif if it
      isn't available. */
-  --font-sans: var(--font-lader), ui-sans-serif, system-ui, sans-serif,
+  --font-sans:
+    var(--font-lader), ui-sans-serif, system-ui, sans-serif,
     "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -159,10 +160,43 @@
   body {
     @apply bg-background text-foreground;
   }
-  button:not(:disabled), [role="button"]:not(:disabled) {
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
     cursor: pointer;
   }
   html {
     @apply font-sans;
   }
+}
+/* Public landing page (/) only: dark institutional theme with OCBC Red as a
+   sparing accent. Applied as `.dark.landing` on the page root so shadcn
+   components pick these tokens up instead of being restyled ad hoc.
+   Brand red is never used for errors here — "attention" is amber. */
+.dark.landing {
+  --background: #0a0a0b;
+  --foreground: #f2f2f0;
+  --card: #131315;
+  --card-foreground: #f2f2f0;
+  --popover: #131315;
+  --popover-foreground: #f2f2f0;
+  --primary: #ee2722;
+  --primary-foreground: #f2f2f0;
+  --secondary: #1b1b1e;
+  --secondary-foreground: #f2f2f0;
+  --muted: #1b1b1e;
+  --muted-foreground: #a0a0a5;
+  --accent: #1b1b1e;
+  --accent-foreground: #f2f2f0;
+  --destructive: #e3a008;
+  --border: rgb(255 255 255 / 8%);
+  --input: rgb(255 255 255 / 12%);
+  --ring: #ee2722;
+  /* Charts: red = what Cadence achieves; gray dashed = the annual model. */
+  --series-1: #ee2722;
+  --series-muted: #6e6e73;
+  --brand-red: #ee2722;
+  /* Small red text on #0a0a0b: a touch lighter for comfortable reading. */
+  --brand-red-text: #ff4a44;
+  background: var(--background);
+  color: var(--foreground);
 }
