@@ -1,0 +1,72 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function role() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    // Loan-scoped docs carry ownerUid (borrower) and rmUid (their RM).
+    // Borrower: own loans only. RM: own book only. Risk: everything.
+    // Client queries must filter on the same field (ownerUid / rmUid) so the
+    // rule can be proven for the whole query.
+    function canReadLoanDoc(d) {
+      return signedIn() && (
+        role() == 'risk' ||
+        (role() == 'rm' && d.rmUid == request.auth.uid) ||
+        (role() == 'borrower' && d.ownerUid == request.auth.uid)
+      );
+    }
+
+    function isStaff() {
+      return signedIn() && role() in ['rm', 'risk'];
+    }
+
+    // User profiles are written by the client during onboarding (the one
+    // exception to server-only Firestore writes). Role is locked once set.
+    match /users/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow create: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.role in ['borrower', 'rm', 'risk'];
+      allow update: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.role == resource.data.role;
+      allow delete: if false;
+    }
+
+    // Everything below is written only by firebase-admin (API routes, agent,
+    // seed). Clients read via onSnapshot.
+    match /loans/{id} { allow read: if canReadLoanDoc(resource.data); }
+    match /borrowers/{id} { allow read: if canReadLoanDoc(resource.data); }
+    match /kpis/{id} { allow read: if canReadLoanDoc(resource.data); }
+    match /readings/{id} { allow read: if canReadLoanDoc(resource.data); }
+    match /scoreHistory/{id} { allow read: if canReadLoanDoc(resource.data); }
+    match /messages/{id} { allow read: if canReadLoanDoc(resource.data); }
+
+    // Borrowers only see borrower-facing events (query must filter
+    // visibility == 'all'); internal events are staff-only.
+    match /events/{id} {
+      allow read: if canReadLoanDoc(resource.data)
+        && (resource.data.visibility == 'all' || isStaff());
+    }
+
+    // RM briefs, recommendations and agent traces are never borrower-visible.
+    match /exceptions/{id} {
+      allow read: if isStaff() && canReadLoanDoc(resource.data);
+    }
+    match /agentRuns/{id} {
+      allow read: if isStaff() && canReadLoanDoc(resource.data);
+    }
+
+    match /personas/{id} { allow read: if signedIn(); }
+    match /simulation/{id} { allow read: if signedIn(); }
+
+    // Everything else is denied until its rules are written.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
